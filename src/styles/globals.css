@@ -1,0 +1,8 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Optional: global gradient background */
+body {
+  @apply bg-gradient-to-b from-gray-900 via-purple-900 to-black text-white font-sans min-h-screen;
+}
