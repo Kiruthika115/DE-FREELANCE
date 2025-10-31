@@ -1,81 +1,111 @@
 import React, { useEffect, useState } from "react";
 import { ethers } from "ethers";
-import { getContracts } from "../lib/contracts";
+import marketplaceAbi from "../lib/DeFreeMarketplace.json";
+import nftAbi from "../lib/ReputationNFT.json";
 import ProjectCard from "../components/ProjectCard";
 
-export default function Home({ account }) {
+const Home = () => {
   const [projects, setProjects] = useState([]);
-  const [showMine, setShowMine] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    loadProjects();
-  }, []);
+  const [badges, setBadges] = useState({});
+  const [connected, setConnected] = useState(false);
 
   const loadProjects = async () => {
     try {
-      if (!window.ethereum) {
-        alert("MetaMask not detected!");
-        return;
-      }
-
+      if (!window.ethereum) return;
       const provider = new ethers.BrowserProvider(window.ethereum);
-      const { marketplace } = getContracts(provider);
+      const signer = await provider.getSigner();
 
-      const count = await marketplace.projectCount();
-      console.log("📦 Total projects:", count.toString());
+      const contract = new ethers.Contract(
+        import.meta.env.VITE_MARKETPLACE_ADDRESS,
+        marketplaceAbi.abi,
+        signer
+      );
 
-      const list = [];
+      const nft = new ethers.Contract(
+        import.meta.env.VITE_NFT_ADDRESS,
+        nftAbi.abi,
+        signer
+      );
+
+      const count = await contract.projectCount();
+      const items = [];
+      const badgeMap = {};
+
       for (let i = 1; i <= count; i++) {
-        const p = await marketplace.projects(i);
-        list.push({
+        const p = await contract.projects(i);
+
+        const freelancer = p.freelancer;
+
+        if (!badgeMap[freelancer]) {
+          badgeMap[freelancer] = Number(await nft.balanceOf(freelancer));
+        }
+
+        items.push({
           id: i,
           client: p.client,
-          freelancer: p.freelancer,
-          amount: ethers.formatEther(BigInt(p.amount.toString())),
-
-          status: Number(p.status),
+          freelancer,
+          amount: p.amount.toString(),
+          status: ["Open", "InProgress", "Completed", "Cancelled"][p.status],
         });
       }
 
-      console.log("✅ Loaded projects:", list);
-      setProjects(list.reverse());
+      setProjects(items);
+      setBadges(badgeMap);
+      console.log("✅ Projects:", items);
+      console.log("🎖 Badge counts:", badgeMap);
+
     } catch (err) {
-      console.error("❌ Failed to load projects:", err);
-    } finally {
-      setLoading(false);
+      console.error("❌ Load failed:", err);
     }
   };
 
-  const filtered = showMine
-    ? projects.filter((p) => p.client === account || p.freelancer === account)
-    : projects;
+  const connectWallet = async () => {
+    await window.ethereum.request({ method: "eth_requestAccounts" });
+    setConnected(true);
+    loadProjects();
+  };
+
+  useEffect(() => {
+    if (window.ethereum) {
+      connectWallet();
+      window.ethereum.on("accountsChanged", () => connectWallet());
+    }
+  }, []);
 
   return (
-    <div className="flex flex-col items-center w-full space-y-8 py-10">
-      <button
-        onClick={() => setShowMine(!showMine)}
-        className="bg-gradient-to-r from-purple-600 to-indigo-700 px-6 py-3 rounded-xl text-lg font-semibold shadow-lg hover:scale-105 transition-transform"
-      >
-        {showMine ? "Show All Projects" : "Show My Projects"}
-      </button>
+    <div >
+      {/* <h1 className="text-3xl md:text-4xl font-bold mb-4 bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+        🚀 DeFree Marketplace
+      </h1> */}
 
-      {loading ? (
-        <p className="text-gray-400 animate-pulse">Loading projects...</p>
-      ) : filtered.length === 0 ? (
-        <p className="text-gray-400">No projects found.</p>
-      ) : (
-        <div className="grid md:grid-cols-2 gap-8 w-full max-w-5xl">
-          {filtered.map((p) => (
+      {/* <p className="text-gray-400 mb-8">Empowering freelancers on Ethereum 💜</p> */}
+
+      {!connected && (
+        <button
+          onClick={connectWallet}
+          className="bg-gradient-to-r from-purple-600 to-pink-500 px-6 py-3 rounded-xl font-bold shadow-lg hover:scale-105 transition"
+        >
+          🔗 Connect Wallet
+        </button>
+      )}
+
+      <div className="grid gap-6 mt-8 md:grid-cols-2 lg:grid-cols-3">
+        {projects.length > 0 ? (
+          projects.map((p) => (
             <ProjectCard
               key={p.id}
               project={p}
-              account={account}
-              reload={loadProjects}
+              badgeCount={badges[p.freelancer] ?? 0}
             />
-          ))}
-        </div>
-      )}
+          ))
+        ) : (
+          <p className="text-gray-500 text-lg">
+            No projects yet... ✨ Start building!
+          </p>
+        )}
+      </div>
     </div>
   );
-}
+};
+
+export default Home;
