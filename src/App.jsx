@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
 import Home from "./pages/Home";
 import Create from "./pages/Create";
 import Admin from "./pages/Admin";
-import Badges from"./pages/Badges";
+
 import "../src/styles/globals.css";
 
 export default function App() {
@@ -59,7 +59,7 @@ export default function App() {
               <Link to="/" className="hover:text-purple-400 transition">Home</Link>
               <Link to="/create" className="hover:text-purple-400 transition">Create</Link>
               {/* <Link to="/admin" className="hover:text-purple-400 transition">Admin</Link> */}
-              <Link to="/badges" className="hover:text-purple-400 transition">Badges</Link>
+              {/* <Link to="/badges" className="hover:text-purple-400 transition">Badges</Link> */}
 
             </nav>
 
@@ -100,7 +100,7 @@ export default function App() {
               <Route path="/" element={<Home account={account} />} />
               <Route path="/create" element={<Create />} />
               {/* <Route path="/admin" element={<Admin />} /> */}
-              <Route path="/badges" element={<Badges account={account} />} />
+              {/* <Route path="/badges" element={<Badges account={account} />} /> */}
 
             </Routes>
           </div>
